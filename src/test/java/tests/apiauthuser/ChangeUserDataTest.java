@@ -1,89 +1,93 @@
-package tests;
+package tests.apiauthuser;
 
+import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 import io.qameta.allure.junit4.DisplayName;
-import io.restassured.response.ValidatableResponse;
-import org.apache.http.HttpStatus;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import ru.practikum.yandex.api.UserApi;
+import ru.practikum.yandex.model.generator.UserDataUpdateGenerator;
 import ru.practikum.yandex.model.lombok.LoginDataLombok;
 import ru.practikum.yandex.model.lombok.UserDataLombok;
 import ru.practikum.yandex.model.lombok.UserDataUpdateLombok;
 
-import static org.hamcrest.CoreMatchers.is;
-import static ru.practikum.yandex.model.generator.UserDataUpdateGenerator.getUpdatedRandomUser;
 import static ru.practikum.yandex.model.generator.UserGenerator.getRandomUser;
 
 @Feature("Change user data")
 public class ChangeUserDataTest {
 
-    protected static String userAccessToken;
+    protected String userAccessToken;
     protected String userRefreshToken;
+    UserApi userApi = new UserApi();
+    UserDataLombok userData;
+    String nonExistentEmail = "nonexistentemail@example.com";
+
+    @Before
+    public void setUp() {
+        userData = getRandomUser("Vlad54321", "password54321", "Vlad");
+        userApi.createUserLombok(userData);
+    }
 
     @After
     public void cleanUp() {
-        UserApi userApi = new UserApi();
+
         if (userRefreshToken != null) {
-            // Разлогиниваем пользователя по его refreshToken
+            // Разлогинивание пользователя по его refreshToken
             userApi.logoutUser(userRefreshToken);
         }
-           if (userAccessToken != null) {
+        if (userAccessToken != null) {
             userApi.deleteUser(userAccessToken);
         }
     }
+
     @Test
-    @DisplayName("User can update data with authorization")
-    public void userCanUpdateDataWithAuthorizationTest() {
-        UserDataLombok userDataLombok = getRandomUser("Vlad54321", "password54321", "Vlad");
-        UserApi userApi = new UserApi();
+    @DisplayName("User can update name with authorization")
+    @Description("This test verifies that a user can successfully update their name when authorized.")
+    public void userCanUpdateNameWithAuthorizationTest() {
 
-        // Создание пользователя
-        ValidatableResponse createResponse = userApi.createUserLombok(userDataLombok);
-        createResponse.log().all()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("success", is(true));
-        // Авторизация пользователя
-        LoginDataLombok loginDataLombok = new LoginDataLombok(userDataLombok.getEmail(), userDataLombok.getPassword());
-        ValidatableResponse loginResponse = userApi.loginUser(loginDataLombok);
-        loginResponse.log().all()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("success", is(true));
-        userAccessToken = loginResponse.extract().path("accessToken");
+        LoginDataLombok loginDataLombok = new LoginDataLombok(userData.getEmail(), userData.getPassword());
+        userAccessToken = userApi.loginAndGetAccessToken(loginDataLombok); // получение AccessToken
 
-        // Генерация новых email и name
-        UserDataUpdateLombok userUpdatedLombok = getUpdatedRandomUser();
+        // Генерация случайного имени пользователя
+        String randomName = UserDataUpdateGenerator.getUpdatedRandomUser().getName();
 
-        // Обновление данных пользователя
-        ValidatableResponse updatedResponse = userApi.updatedDataUser(userUpdatedLombok, userAccessToken);
-        updatedResponse.log().all()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("success", is(true));
-
-        // Проверка, что данные обновлены
-        ValidatableResponse getUserResponse = userApi.getUserData(userAccessToken);
-        getUserResponse.log().all()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("user.email", is(userUpdatedLombok.getEmail().toLowerCase()))
-                .body("user.name", is(userUpdatedLombok.getName()));
+        // Обновление имени пользователя
+        UserDataUpdateLombok userUpdatedLombok = new UserDataUpdateLombok(null, randomName);
+        userApi.canUpdateNameWithAuthorization(userUpdatedLombok, userAccessToken, randomName);
     }
 
     @Test
-    @DisplayName("User cannot change their data without authorization")
-    public void userCannotChangeDataWithoutAuthorizationTest() {
-        // Попытка изменения данных без авторизации
-        UserDataUpdateLombok updatedUserData = new UserDataUpdateLombok("updatedemail@gmail.com", "UpdatedName");
-        UserApi userApi = new UserApi();
+    @DisplayName("User can update email with authorization")
+    @Description("This test verifies that a user can successfully update their email when authorized.")
+    public void userCanUpdateEmailWithAuthorizationTest() {
 
-        ValidatableResponse changeResponse = userApi.changeUserData("", updatedUserData);
-        changeResponse.log().all()
-                .assertThat()
-                .statusCode(HttpStatus.SC_UNAUTHORIZED)
-                .body("success", is(false));
+        LoginDataLombok loginDataLombok = new LoginDataLombok(userData.getEmail(), userData.getPassword());
+        userAccessToken = userApi.loginAndGetAccessToken(loginDataLombok);
+
+        // Генерация случайного имени пользователя
+        String randomEmail = UserDataUpdateGenerator.getUpdatedRandomUser().getEmail();
+
+        // Обновление email пользователя
+        UserDataUpdateLombok userUpdatedLombok = new UserDataUpdateLombok(randomEmail, null);
+        userApi.canUpdateEmailWithAuthorization(userUpdatedLombok, userAccessToken, randomEmail);
     }
 
+    @Test
+    @DisplayName("User cannot update name without authorization")
+    @Description("This test verifies that a user cannot change their name when not authorized.")
+    public void userCannotChangeNameWithoutAuthorizationTest() {
+        // Попытка изменения имени без авторизации (не используем userAccessToken)
+        UserDataUpdateLombok userUpdatedLombok = new UserDataUpdateLombok(null, "NewName");
+        userApi.cannotUpdateDataWithoutAuthorization(userUpdatedLombok, null);
+    }
+
+    @Test
+    @DisplayName("User cannot update email without authorization")
+    @Description("This test verifies that a user cannot change their email when not authorized.")
+    public void userCannotChangeEmailWithoutAuthorizationTest() {
+        // Попытка изменения email без авторизации (не используется userAccessToken)
+        UserDataUpdateLombok userUpdatedLombok = new UserDataUpdateLombok(nonExistentEmail, null);
+        userApi.cannotUpdateDataWithoutAuthorization(userUpdatedLombok, null);
+    }
 }

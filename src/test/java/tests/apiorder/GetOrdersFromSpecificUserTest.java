@@ -1,10 +1,10 @@
 package tests.apiorder;
 
+import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 import io.qameta.allure.junit4.DisplayName;
-import io.restassured.response.ValidatableResponse;
-import org.apache.http.HttpStatus;
-import org.junit.AfterClass;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import ru.practikum.yandex.api.OrderApi;
 import ru.practikum.yandex.api.UserApi;
@@ -14,81 +14,57 @@ import ru.practikum.yandex.model.lombok.UserDataLombok;
 
 import java.util.List;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.Matchers.emptyArray;
-import static org.hamcrest.Matchers.not;
 import static ru.practikum.yandex.model.generator.UserGenerator.getRandomUser;
 
-@Feature("Получение заказов конкретного пользователя")
+@Feature("Get orders from specific user")
 public class GetOrdersFromSpecificUserTest {
-    private static String userAccessToken;
-    private static final UserApi userApi = new UserApi();
-    private static final OrderApi orderApi = new OrderApi();
+    protected String userAccessToken;
+    protected String userRefreshToken;
+    private final OrderApi orderApi = new OrderApi();
+    UserApi userApi = new UserApi();
+    UserDataLombok userData;
 
-    @AfterClass
-    public static void tearDown() {
+    @Before
+    public void setUp() {
+        userData = getRandomUser("Vlad54321", "password54321", "Vlad");
+        userApi.createUserLombok(userData);
+    }
+
+    @After
+    public void cleanUp() {
+        if (userRefreshToken != null) {
+            userApi.logoutUser(userRefreshToken);
+        }
         if (userAccessToken != null) {
-            userApi.deleteUser(userAccessToken);
+            new UserApi().deleteUser(userAccessToken);
         }
     }
 
-    @DisplayName("Получить заказы конкретного пользователя с авторизацией")
+    @DisplayName("Check get specific user's orders with authorization")
+    @Description("Verifies that an authenticated user can retrieve their orders successfully with a 200 status code.")
     @Test
-    public void getSpecificUsersOrdersWithAuthorizationTest() {
-        UserDataLombok userData = createUser("Vlad54321", "password54321", "Vlad");
-        userAccessToken = loginUser(userData);
+    public void GetSpecificUsersOrdersWithAuthorizationTest() {
+        // Авторизация с использованием email и пароля из созданного пользователя
+        LoginDataLombok loginDataLombok = new LoginDataLombok(userData.getEmail(), userData.getPassword());
+        userAccessToken = userApi.loginAndGetAccessToken(loginDataLombok);
 
-        List<String> selectedIngredients = getIngredients().subList(0, 2);
-        createOrder(selectedIngredients);
+        List<String> ingredientIds = orderApi.getIngredients();
+        List<String> selectedIngredients = ingredientIds.subList(0, 2);
 
-        validateUserOrders();
-    }
-
-    @DisplayName("Получить заказы конкретного пользователя без авторизации")
-    @Test
-    public void getSpecificUsersOrdersWithoutAuthorizationTest() {
-        orderApi.getListOrdersLombok("").assertThat()
-                .statusCode(HttpStatus.SC_UNAUTHORIZED)
-                .body("success", is(false))
-                .body("message", is("You should be authorised"));
-    }
-
-    private UserDataLombok createUser(String username, String password, String name) {
-        UserDataLombok userData = getRandomUser(username, password, name);
-        userApi.createUserLombok(userData).assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("success", is(true));
-        return userData;
-    }
-
-    private String loginUser(UserDataLombok userData) {
-        LoginDataLombok loginData = new LoginDataLombok(userData.getEmail(), userData.getPassword());
-        ValidatableResponse loginResponse = userApi.loginUser(loginData);
-        loginResponse.assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("success", is(true));
-        return loginResponse.extract().path("accessToken");
-    }
-
-    private void createOrder(List<String> selectedIngredients) {
         OrderDataLombok orderData = new OrderDataLombok(selectedIngredients);
-        orderApi.createOrderLombok(orderData).assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("success", is(true));
+        orderApi.createOrderLombok(userAccessToken, orderData);
+
+        orderApi.getListOrdersLombok(userAccessToken);
+
     }
 
-    private void validateUserOrders() {
-        orderApi.getListOrdersLombok(userAccessToken).assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("success", is(true))
-                .body("orders", is(not(emptyArray())));
-    }
+    @DisplayName("Check get specific users orders without authorization")
+    @Description("Checks that an unauthorized user receives a 401 error when attempting to retrieve orders.")
+    @Test
+    public void CannotGetSpecificUsersOrdersWithoutAuthorizationTest() {
 
-    private List<String> getIngredients() {
-        ValidatableResponse response = orderApi.getIngredients(null);
-        response.assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("success", is(true));
-        return response.extract().jsonPath().getList("data._id");
+        orderApi.getListOrdersLombokWithoutAuthorization("");
     }
 }
+
+

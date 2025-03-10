@@ -1,28 +1,20 @@
 package tests.apiauthregister;
 
+import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 import io.qameta.allure.junit4.DisplayName;
-import io.restassured.response.ValidatableResponse;
-import org.apache.http.HttpStatus;
 import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import ru.practikum.yandex.api.UserApi;
 import ru.practikum.yandex.model.lombok.UserDataLombok;
 
-import static org.hamcrest.CoreMatchers.is;
 import static ru.practikum.yandex.model.generator.UserGenerator.getRandomUser;
 
 @Feature("Create user")
 public class CreateUserTest {
 
     protected String userAccessToken;
-    protected UserApi userApi;
-
-    @Before
-    public void setUp() {
-        userApi = new UserApi();
-    }
+    UserApi userApi = new UserApi();
 
     @After
     public void cleanUp() {
@@ -31,55 +23,44 @@ public class CreateUserTest {
         }
     }
 
-    private void assertResponse(ValidatableResponse response, int expectedStatus, String expectedMessage) {
-        response.log().all()
-                .assertThat()
-                .statusCode(expectedStatus)
-                .body("success", is(expectedMessage == null));
-        if (expectedMessage != null) {
-            response.assertThat().body("message", is(expectedMessage));
-        }
-    }
-
     @DisplayName("Check unique user can be created")
+    @Description("This test verifies that a unique user can be successfully created in the system. It attempts to create a user with specific credentials and expects a successful response")
     @Test
     public void uniqueUserCanBeCreatedTest() {
         UserDataLombok userData = getRandomUser("Vlad54321", "password54321", "Vlad");
-        ValidatableResponse response = userApi.createUserLombok(userData);
-        userAccessToken = response.extract().path("accessToken");
-        assertResponse(response, HttpStatus.SC_OK, null);
+        userApi.createUserLombok(userData);
     }
 
     @DisplayName("Check cannot create two same users")
+    @Description("This test checks that the same user cannot be created twice. It first creates a user and then attempts to create the same user again, expecting a forbidden response indicating that the user already exists.")
     @Test
     public void cannotCreateTwoSameUsersTest() {
         UserDataLombok userData = getRandomUser("Vlad54321", "password54321", "Vlad");
         userApi.createUserLombok(userData); // Create the first user
-        ValidatableResponse response = userApi.createUserLombok(userData); // Attempt to create the same user
-        assertResponse(response, HttpStatus.SC_FORBIDDEN, "User already exists");
+        userApi.cannotCreateTwoSameUsers(userData); // Attempt to create the same user
     }
 
-    @DisplayName("Check cannot create user without Login")
+    @DisplayName("Check cannot create user without Email")
+    @Description("This test verifies that a user cannot be created without providing a login (email). It attempts to create a user with a null login and expects a forbidden response with a specific error message.")
     @Test
-    public void cannotCreateUserWithoutLoginTest() {
+    public void cannotCreateUserWithoutEmailTest() {
         UserDataLombok userData = getRandomUser(null, "password54321", "Vlad");
-        ValidatableResponse response = userApi.createUserLombok(userData);
-        assertResponse(response, HttpStatus.SC_FORBIDDEN, "Email, password and name are required fields");
+        userApi.cannotCreateUserWithoutRequiredField(userData);
     }
 
     @DisplayName("Check cannot create user without Password")
+    @Description("This test checks that a user cannot be created without providing a password. It attempts to create a user with a null password and expects a forbidden response with a specific error message.")
     @Test
     public void cannotCreateUserWithoutPasswordTest() {
         UserDataLombok userData = getRandomUser("Vlad54321", null, "Vlad");
-        ValidatableResponse response = userApi.createUserLombok(userData);
-        assertResponse(response, HttpStatus.SC_FORBIDDEN, "Email, password and name are required fields");
+        userApi.cannotCreateUserWithoutRequiredField(userData);
     }
 
     @DisplayName("Check cannot create user without Name")
+    @Description("This test verifies that a user cannot be created without providing a name. It attempts to create a user with a null name and expects a forbidden response with a specific error message.")
     @Test
     public void cannotCreateUserWithoutNameTest() {
         UserDataLombok userData = getRandomUser("Vlad54321", "password54321", null);
-        ValidatableResponse response = userApi.createUserLombok(userData);
-        assertResponse(response, HttpStatus.SC_FORBIDDEN, "Email, password and name are required fields");
+        userApi.cannotCreateUserWithoutRequiredField(userData);
     }
 }
