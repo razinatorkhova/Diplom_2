@@ -3,6 +3,7 @@ package tests.apiauthuser;
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 import io.qameta.allure.junit4.DisplayName;
+import io.restassured.response.ValidatableResponse;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -21,7 +22,6 @@ public class ChangeUserDataTest {
     protected String userRefreshToken;
     UserApi userApi = new UserApi();
     UserDataLombok userData;
-    String nonExistentEmail = "nonexistentemail@example.com";
 
     @Before
     public void setUp() {
@@ -54,7 +54,8 @@ public class ChangeUserDataTest {
 
         // Обновление имени пользователя
         UserDataUpdateLombok userUpdatedLombok = new UserDataUpdateLombok(null, randomName);
-        userApi.canUpdateNameWithAuthorization(userUpdatedLombok, userAccessToken, randomName);
+        ValidatableResponse response = userApi.canUpdateName(userUpdatedLombok, userAccessToken, randomName);
+        userApi.assertUpdateNameWithAuthorization(response, randomName);
     }
 
     @Test
@@ -70,24 +71,35 @@ public class ChangeUserDataTest {
 
         // Обновление email пользователя
         UserDataUpdateLombok userUpdatedLombok = new UserDataUpdateLombok(randomEmail, null);
-        userApi.canUpdateEmailWithAuthorization(userUpdatedLombok, userAccessToken, randomEmail);
+        ValidatableResponse response = userApi.canUpdateName(userUpdatedLombok, userAccessToken, randomEmail);
+        userApi.assertUpdateEmailWithAuthorization(response, randomEmail);
     }
 
     @Test
     @DisplayName("User cannot update name without authorization")
     @Description("This test verifies that a user cannot change their name when not authorized.")
     public void userCannotChangeNameWithoutAuthorizationTest() {
+
+        // Генерация случайного имени пользователя
+        String randomName = UserDataUpdateGenerator.getUpdatedRandomUser().getName();
+
         // Попытка изменения имени без авторизации (не используем userAccessToken)
-        UserDataUpdateLombok userUpdatedLombok = new UserDataUpdateLombok(null, "NewName");
-        userApi.cannotUpdateDataWithoutAuthorization(userUpdatedLombok, null);
+        UserDataUpdateLombok userUpdatedLombok = new UserDataUpdateLombok(null, randomName);
+        ValidatableResponse response = userApi.canUpdateName(userUpdatedLombok, null, randomName); // Передаем null в accessToken
+        userApi.assertUpdateDataWithoutAuthorization(response);
     }
 
     @Test
     @DisplayName("User cannot update email without authorization")
     @Description("This test verifies that a user cannot change their email when not authorized.")
     public void userCannotChangeEmailWithoutAuthorizationTest() {
-        // Попытка изменения email без авторизации (не используется userAccessToken)
-        UserDataUpdateLombok userUpdatedLombok = new UserDataUpdateLombok(nonExistentEmail, null);
-        userApi.cannotUpdateDataWithoutAuthorization(userUpdatedLombok, null);
+
+        // Генерация случайного имени пользователя
+        String randomEmail = UserDataUpdateGenerator.getUpdatedRandomUser().getEmail();
+
+        // Попытка изменения имени без авторизации (не используем userAccessToken)
+        UserDataUpdateLombok userUpdatedLombok = new UserDataUpdateLombok(randomEmail, null);
+        ValidatableResponse response = userApi.canUpdateName(userUpdatedLombok, null, randomEmail); // Передаем null в accessToken
+        userApi.assertUpdateDataWithoutAuthorization(response);
     }
 }

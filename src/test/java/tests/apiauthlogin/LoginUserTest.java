@@ -3,6 +3,7 @@ package tests.apiauthlogin;
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 import io.qameta.allure.junit4.DisplayName;
+import io.restassured.response.ValidatableResponse;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -41,8 +42,9 @@ public class LoginUserTest {
     @Test
     public void userCanBeAuthorizedTest() {
         // Авторизация с использованием email и пароля из созданного пользователя
-        LoginDataLombok loginDataLombok = new LoginDataLombok(userData.getEmail(), userData.getPassword());
-        userApi.loginUser(loginDataLombok);
+        LoginDataLombok user = new LoginDataLombok(userData.getEmail(), userData.getPassword());
+        ValidatableResponse response = userApi.loginUser(user);
+        userApi.assertValidateSuccessfulResponse(response);
     }
 
     @DisplayName("Check cannot Authorized user with incorrect Email")
@@ -50,8 +52,9 @@ public class LoginUserTest {
     @Test
     public void cannotAuthorizedUserWithIncorrectEmailTest() {
 
-        LoginDataLombok loginDataLombok = new LoginDataLombok("Vlad000001", userData.getPassword());
-        userApi.cannotAuthorizedUserWithIncorrectRequiredField(loginDataLombok);
+        LoginDataLombok user = new LoginDataLombok("Vlad000001", userData.getPassword());
+        ValidatableResponse response = userApi.loginUser(user);
+        userApi.assertUnauthorizedWithIncorrectRequiredField(response);
     }
 
     @DisplayName("Check cannot Authorized user with incorrect Password")
@@ -59,7 +62,8 @@ public class LoginUserTest {
     @Test
     public void cannotAuthorizedUserWithIncorrectPasswordTest() {
 
-        LoginDataLombok loginDataLombok = new LoginDataLombok(userData.getEmail(), "password00001");
-        userApi.cannotAuthorizedUserWithIncorrectRequiredField(loginDataLombok);
+        LoginDataLombok user = new LoginDataLombok(userData.getEmail(), "password00001");
+        ValidatableResponse response = userApi.loginUser(user);
+        userApi.assertUnauthorizedWithIncorrectRequiredField(response);
     }
 }

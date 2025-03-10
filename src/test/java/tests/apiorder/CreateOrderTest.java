@@ -3,6 +3,7 @@ package tests.apiorder;
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 import io.qameta.allure.junit4.DisplayName;
+import io.restassured.response.ValidatableResponse;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -51,7 +52,8 @@ public class CreateOrderTest {
         List<String> selectedIngredients = ingredientIds.subList(0, 2);
 
         OrderDataLombok orderData = new OrderDataLombok(selectedIngredients);
-        orderApi.createOrderLombok(userAccessToken, orderData);
+        ValidatableResponse response = orderApi.createOrderLombok(userAccessToken, orderData);
+        userApi.assertValidateSuccessfulResponse(response);
     }
 
     @DisplayName("Create order without authorization with ingredients")
@@ -63,7 +65,8 @@ public class CreateOrderTest {
         List<String> selectedIngredients = ingredientIds.subList(0, 2);
 
         OrderDataLombok orderData = new OrderDataLombok(selectedIngredients);
-        orderApi.createOrderWithoutAuthorizationWithIngredients("", orderData);
+        ValidatableResponse response = orderApi.createOrderLombok("", orderData);
+        orderApi.assertUserShouldBeAuthorised(response);
     }
 
     @DisplayName("Create order with authorization and without ingredients")
@@ -74,7 +77,8 @@ public class CreateOrderTest {
         userAccessToken = userApi.loginAndGetAccessToken(loginDataLombok);
 
         OrderDataLombok orderData = new OrderDataLombok(null);
-        orderApi.createOrderWithAuthorizationWithoutIngredients(userAccessToken, orderData);
+        ValidatableResponse response = orderApi.createOrderLombok(userAccessToken, orderData);
+        orderApi.assertIngredientIdsMustBeProvided(response);
     }
 
     @DisplayName("Create order with authorization and invalid ingredient hash")
@@ -85,6 +89,7 @@ public class CreateOrderTest {
         userAccessToken = userApi.loginAndGetAccessToken(loginDataLombok);
 
         OrderDataLombok orderData = new OrderDataLombok(List.of("01c0c5a71d1f8206d", "01f82001bdaaa6f"));
-        orderApi.createOrderWithAuthorizationWithInvalidIngredients(userAccessToken, orderData);
+        ValidatableResponse response = orderApi.createOrderLombok(userAccessToken, orderData);
+        orderApi.assertResponseStatusInterrnalServerError(response);
     }
 }

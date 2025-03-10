@@ -3,6 +3,7 @@ package tests.apiorder;
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 import io.qameta.allure.junit4.DisplayName;
+import io.restassured.response.ValidatableResponse;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -43,7 +44,7 @@ public class GetOrdersFromSpecificUserTest {
     @DisplayName("Check get specific user's orders with authorization")
     @Description("Verifies that an authenticated user can retrieve their orders successfully with a 200 status code.")
     @Test
-    public void GetSpecificUsersOrdersWithAuthorizationTest() {
+    public void getSpecificUsersOrdersWithAuthorizationTest() {
         // Авторизация с использованием email и пароля из созданного пользователя
         LoginDataLombok loginDataLombok = new LoginDataLombok(userData.getEmail(), userData.getPassword());
         userAccessToken = userApi.loginAndGetAccessToken(loginDataLombok);
@@ -52,18 +53,20 @@ public class GetOrdersFromSpecificUserTest {
         List<String> selectedIngredients = ingredientIds.subList(0, 2);
 
         OrderDataLombok orderData = new OrderDataLombok(selectedIngredients);
-        orderApi.createOrderLombok(userAccessToken, orderData);
+        ValidatableResponse response = orderApi.createOrderLombok(userAccessToken, orderData);
+        userApi.assertValidateSuccessfulResponse(response);
 
         orderApi.getListOrdersLombok(userAccessToken);
-
+        orderApi.assertResponsesBodyHaveNotEmptyOrder(response);
     }
 
     @DisplayName("Check get specific users orders without authorization")
     @Description("Checks that an unauthorized user receives a 401 error when attempting to retrieve orders.")
     @Test
-    public void CannotGetSpecificUsersOrdersWithoutAuthorizationTest() {
+    public void cannotGetSpecificUsersOrdersWithoutAuthorizationTest() {
 
-        orderApi.getListOrdersLombokWithoutAuthorization("");
+        ValidatableResponse response = orderApi.getListOrdersLombok("");
+        orderApi.assertUserShouldBeAuthorised(response);
     }
 }
 

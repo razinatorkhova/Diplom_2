@@ -3,6 +3,7 @@ package tests.apiauthregister;
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 import io.qameta.allure.junit4.DisplayName;
+import io.restassured.response.ValidatableResponse;
 import org.junit.After;
 import org.junit.Test;
 import ru.practikum.yandex.api.UserApi;
@@ -28,7 +29,8 @@ public class CreateUserTest {
     @Test
     public void uniqueUserCanBeCreatedTest() {
         UserDataLombok userData = getRandomUser("Vlad54321", "password54321", "Vlad");
-        userApi.createUserLombok(userData);
+        ValidatableResponse response = userApi.createUserLombok(userData);
+        userApi.assertValidateSuccessfulResponse(response);
     }
 
     @DisplayName("Check cannot create two same users")
@@ -37,7 +39,8 @@ public class CreateUserTest {
     public void cannotCreateTwoSameUsersTest() {
         UserDataLombok userData = getRandomUser("Vlad54321", "password54321", "Vlad");
         userApi.createUserLombok(userData); // Create the first user
-        userApi.cannotCreateTwoSameUsers(userData); // Attempt to create the same user
+        ValidatableResponse response = userApi.cannotCreateTwoSameUsers(userData);// Attempt to create the same user
+        userApi.assertForbiddenUserAlreadyExistsResponse(response);
     }
 
     @DisplayName("Check cannot create user without Email")
@@ -45,7 +48,8 @@ public class CreateUserTest {
     @Test
     public void cannotCreateUserWithoutEmailTest() {
         UserDataLombok userData = getRandomUser(null, "password54321", "Vlad");
-        userApi.cannotCreateUserWithoutRequiredField(userData);
+        ValidatableResponse response = userApi.createUserLombok(userData);
+        userApi.assertForbiddenInvalidRequiredFieldResponse(response);
     }
 
     @DisplayName("Check cannot create user without Password")
@@ -53,7 +57,8 @@ public class CreateUserTest {
     @Test
     public void cannotCreateUserWithoutPasswordTest() {
         UserDataLombok userData = getRandomUser("Vlad54321", null, "Vlad");
-        userApi.cannotCreateUserWithoutRequiredField(userData);
+        ValidatableResponse response = userApi.createUserLombok(userData);
+        userApi.assertForbiddenInvalidRequiredFieldResponse(response);
     }
 
     @DisplayName("Check cannot create user without Name")
@@ -61,6 +66,7 @@ public class CreateUserTest {
     @Test
     public void cannotCreateUserWithoutNameTest() {
         UserDataLombok userData = getRandomUser("Vlad54321", "password54321", null);
-        userApi.cannotCreateUserWithoutRequiredField(userData);
+        ValidatableResponse response = userApi.createUserLombok(userData);
+        userApi.assertForbiddenInvalidRequiredFieldResponse(response);
     }
 }
