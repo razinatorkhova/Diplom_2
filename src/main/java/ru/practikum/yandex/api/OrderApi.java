@@ -3,7 +3,6 @@ package ru.practikum.yandex.api;
 import io.qameta.allure.Step;
 import io.restassured.response.ValidatableResponse;
 import org.apache.http.HttpStatus;
-import org.hamcrest.Matchers;
 
 import java.util.List;
 
@@ -22,11 +21,7 @@ public class OrderApi extends RestApi {
                 .body(orderBody)
                 .when()
                 .post(Endpoints.CREATE_ORDER_URI)
-                .then()
-                .log().all()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("success", is(true));
+                .then();
     }
 
     @Step("Create order with ingredients without authorization")
@@ -37,42 +32,7 @@ public class OrderApi extends RestApi {
                 .body(orderBody)
                 .when()
                 .post(Endpoints.CREATE_ORDER_URI)
-                .then()
-                .log().all()
-                .assertThat()
-                .statusCode(HttpStatus.SC_UNAUTHORIZED)
-                .body("success", is(false))
-                .body("message", is("You should be authorised"));
-    }
-
-    @Step("Create order with authorization without ingredients")
-    public ValidatableResponse createOrderWithAuthorizationWithoutIngredients(String userAccessToken, Object orderBody) {
-        return given()
-                .spec(requestSpecification())
-                .header("Authorization", userAccessToken)
-                .body(orderBody)
-                .when()
-                .post(Endpoints.CREATE_ORDER_URI)
-                .then()
-                .log().all()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST)
-                .body("success", is(false))
-                .body("message", is("Ingredient ids must be provided"));
-    }
-
-    @Step("Create order with authorization with invalid ingredients")
-    public ValidatableResponse createOrderWithAuthorizationWithInvalidIngredients(String userAccessToken, Object orderBody) {
-        return given()
-                .spec(requestSpecification())
-                .header("Authorization", userAccessToken)
-                .body(orderBody)
-                .when()
-                .post(Endpoints.CREATE_ORDER_URI)
-                .then()
-                .log().all()
-                .assertThat()
-                .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR);
+                .then();
     }
 
     @Step("Get ingredients")
@@ -95,27 +55,41 @@ public class OrderApi extends RestApi {
                 .and()
                 .when()
                 .get(Endpoints.CREATE_ORDER_URI)
-                .then()
-                .log().all()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("success", is(true))
-                .body("orders", is(not(empty())));
+                .then();
     }
 
-    @Step("Get list of orders from specific user without authorization")
-    public ValidatableResponse getListOrdersLombokWithoutAuthorization(String userAccessToken) {
-        return given()
-                .spec(requestSpecification())
-                .header("Authorization", userAccessToken)
-                .and()
-                .when()
-                .get(Endpoints.CREATE_ORDER_URI)
-                .then()
-                .log().all()
+    //Ассерты
+    @Step("User should be authorised response")
+    public void assertUserShouldBeAuthorised(ValidatableResponse response) {
+        response.log().all()
                 .assertThat()
                 .statusCode(HttpStatus.SC_UNAUTHORIZED)
                 .body("success", is(false))
                 .body("message", is("You should be authorised"));
+    }
+
+    @Step("Check response ingredient ids must be provided")
+    public void assertIngredientIdsMustBeProvided(ValidatableResponse response) {
+        response.log().all()
+                .assertThat()
+                .statusCode(HttpStatus.SC_BAD_REQUEST)
+                .body("success", is(false))
+                .body("message", is("Ingredient ids must be provided"));
+    }
+
+    @Step("Check response ingredient ids must be provided")
+    public void assertResponseStatusInterrnalServerError(ValidatableResponse response) {
+        response.log().all()
+                .assertThat()
+                .statusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR);
+    }
+
+    @Step("Check response orders is not empty")
+    public void assertResponsesBodyHaveNotEmptyOrder(ValidatableResponse response) {
+        response.log().all()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .body("success", is(true))
+                .body("orders", is(not(empty())));
     }
 }
